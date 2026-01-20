@@ -19,46 +19,60 @@ public class PaymentService {
     private final MockPaymentClient mockPaymentClient;
 
     public Payment createPayment(PaymentRequest request) {
-        Order order = orderRepository.findById(request.getOrderId()).orElse(null);
-        if (order == null) {
-            throw new RuntimeException("Order not found");
+        // verify order exists first
+        Order orderForPayment = orderRepository.findById(request.getOrderId()).orElse(null);
+        
+        if (orderForPayment == null) {
+            throw new RuntimeException("Order not found - can't process payment!");
         }
-        if (!"CREATED".equals(order.getStatus())) {
-            throw new RuntimeException("Order is not in CREATED status");
+        
+        if (!"CREATED".equals(orderForPayment.getStatus())) {
+            throw new RuntimeException("Order status is " + orderForPayment.getStatus() + ", should be CREATED");
         }
 
-        Payment payment = new Payment();
-        payment.setOrderId(request.getOrderId());
-        payment.setAmount(request.getAmount());
-        payment.setStatus("PENDING");
-        payment.setPaymentId("pay_" + UUID.randomUUID().toString().substring(0, 8));
-        payment.setCreatedAt(Instant.now());
+        // create payment record
+        Payment newPayment = new Payment();
+        newPayment.setOrderId(request.getOrderId());
+        newPayment.setAmount(request.getAmount());
+        newPayment.setStatus("PENDING");
+        
+        // generate payment ID - hacky but works for now
+        newPayment.setPaymentId("pay_" + UUID.randomUUID().toString().substring(0, 8));
+        newPayment.setCreatedAt(Instant.now());
 
-        Payment savedPayment = paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(newPayment);
 
+        // trigger the mock payment processor (async - takes ~3 seconds)
         mockPaymentClient.simulatePayment(request.getOrderId(), request.getAmount(), savedPayment.getPaymentId());
 
         return savedPayment;
     }
 
+    /**
+     * Called by payment webhook to update payment status
+     * This is where the magic happens after payment gateway responds
+     */
     public void processWebhook(String orderId, String status, String paymentId) {
-        Payment payment = paymentRepository.findByOrderId(orderId);
-        if (payment != null) {
-            payment.setStatus(status);
+        Payment paymentToUpdate = paymentRepository.findByOrderId(orderId);
+        
+        if (paymentToUpdate != null) {
+            paymentToUpdate.setStatus(status);
             if (paymentId != null) {
-                payment.setPaymentId(paymentId);
+                paymentToUpdate.setPaymentId(paymentId);
             }
-            paymentRepository.save(payment);
+            paymentRepository.save(paymentToUpdate);
         }
 
-        Order order = orderRepository.findById(orderId).orElse(null);
-        if (order != null) {
+        // also update the order status based on payment result
+        Order relatedOrder = orderRepository.findById(orderId).orElse(null);
+        if (relatedOrder != null) {
             if ("SUCCESS".equals(status)) {
-                order.setStatus("PAID");
+                relatedOrder.setStatus("PAID");  // yay!
             } else if ("FAILED".equals(status)) {
-                order.setStatus("FAILED");
+                relatedOrder.setStatus("FAILED");  // oops
+                // TODO: maybe restore inventory here? need to think about this
             }
-            orderRepository.save(order);
+            orderRepository.save(relatedOrder);
         }
     }
 

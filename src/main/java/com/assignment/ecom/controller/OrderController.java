@@ -16,6 +16,7 @@ public class OrderController {
 
     @PostMapping
     public Order createOrder(@RequestBody CreateOrderRequest request) {
+        // creates order from user's cart
         return orderService.createOrder(request);
     }
 
@@ -26,6 +27,7 @@ public class OrderController {
 
     @GetMapping("/user/{userId}")
     public List<Order> getOrdersByUser(@PathVariable String userId) {
+        // get all orders for a specific user
         return orderService.getOrdersByUserId(userId);
     }
 }

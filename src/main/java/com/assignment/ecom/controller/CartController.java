@@ -29,8 +29,9 @@ public class CartController {
     @DeleteMapping("/{userId}/clear")
     public Map<String, String> clearCart(@PathVariable String userId) {
         cartService.clearCart(userId);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Cart cleared successfully");
-        return response;
+        
+        Map<String, String> resp = new HashMap<>();
+        resp.put("message", "Cart cleared successfully");
+        return resp;
     }
 }

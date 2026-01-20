@@ -25,69 +25,81 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
 
     public Order createOrder(CreateOrderRequest request) {
-        List<CartItem> cartItems = cartService.getCartItemsByUserId(request.getUserId());
-        if (cartItems.isEmpty()) {
-            throw new RuntimeException("Cart is empty");
+        // grab everything from user's cart
+        List<CartItem> userCart = cartService.getCartItemsByUserId(request.getUserId());
+        
+        if (userCart.isEmpty()) {
+            throw new RuntimeException("Oops! Your cart is empty. Add some items first!");
         }
 
-        List<OrderItem> orderItems = new ArrayList<>();
-        double total = 0;
+        List<OrderItem> itemsForOrder = new ArrayList<>();
+        double runningTotal = 0;
 
-        for (CartItem cartItem : cartItems) {
-            Product product = productRepository.findById(cartItem.getProductId()).orElse(null);
-            if (product == null)
-                continue;
-            if (product.getStock() < cartItem.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product: " + product.getName());
+        // loop through cart and build order
+        for (CartItem itemInCart : userCart) {
+            Product productInfo = productRepository.findById(itemInCart.getProductId()).orElse(null);
+            
+            if (productInfo == null)
+                continue; // skip if product doesn't exist anymore
+                
+            // make sure we have enough stock - learned this the hard way
+            if (productInfo.getStock() < itemInCart.getQuantity()) {
+                throw new RuntimeException("Not enough stock for: " + productInfo.getName());
             }
 
             OrderItem orderItem = new OrderItem();
             orderItem.setId(UUID.randomUUID().toString());
-            orderItem.setProductId(product.getId());
-            orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPrice(product.getPrice());
-            orderItems.add(orderItem);
+            orderItem.setProductId(productInfo.getId());
+            orderItem.setQuantity(itemInCart.getQuantity());
+            orderItem.setPrice(productInfo.getPrice());  // lock in current price
+            itemsForOrder.add(orderItem);
 
-            total += product.getPrice() * cartItem.getQuantity();
+            runningTotal += productInfo.getPrice() * itemInCart.getQuantity();
 
-            product.setStock(product.getStock() - cartItem.getQuantity());
-            productRepository.save(product);
+            // reduce stock immediately
+            productInfo.setStock(productInfo.getStock() - itemInCart.getQuantity());
+            productRepository.save(productInfo);
         }
 
-        Order order = new Order();
-        order.setUserId(request.getUserId());
-        order.setTotalAmount(total);
-        order.setStatus("CREATED");
-        order.setCreatedAt(Instant.now());
-        order.setItems(orderItems);
+        Order newOrder = new Order();
+        newOrder.setUserId(request.getUserId());
+        newOrder.setTotalAmount(runningTotal);
+        newOrder.setStatus("CREATED");
+        newOrder.setCreatedAt(Instant.now());
+        newOrder.setItems(itemsForOrder);
 
-        Order savedOrder = orderRepository.save(order);
+        Order savedOrder = orderRepository.save(newOrder);
+        
+        // cart served its purpose, clear it out
         cartService.clearCart(request.getUserId());
 
         return savedOrder;
     }
 
     public OrderResponse getOrderById(String orderId) {
-        Order order = orderRepository.findById(orderId).orElse(null);
-        if (order == null)
+        Order existingOrder = orderRepository.findById(orderId).orElse(null);
+        
+        if (existingOrder == null)
             return null;
 
-        OrderResponse response = new OrderResponse();
-        response.setId(order.getId());
-        response.setUserId(order.getUserId());
-        response.setTotalAmount(order.getTotalAmount());
-        response.setStatus(order.getStatus());
-        response.setItems(order.getItems());
-        response.setPayment(paymentRepository.findByOrderId(orderId));
+        // build response with payment info too
+        OrderResponse orderResp = new OrderResponse();
+        orderResp.setId(existingOrder.getId());
+        orderResp.setUserId(existingOrder.getUserId());
+        orderResp.setTotalAmount(existingOrder.getTotalAmount());
+        orderResp.setStatus(existingOrder.getStatus());
+        orderResp.setItems(existingOrder.getItems());
+        orderResp.setPayment(paymentRepository.findByOrderId(orderId));
 
-        return response;
+        return orderResp;
     }
 
+    // webhook calls this to update status
     public Order updateOrderStatus(String orderId, String status) {
-        Order order = orderRepository.findById(orderId).orElse(null);
-        if (order != null) {
-            order.setStatus(status);
-            return orderRepository.save(order);
+        Order orderToUpdate = orderRepository.findById(orderId).orElse(null);
+        if (orderToUpdate != null) {
+            orderToUpdate.setStatus(status);
+            return orderRepository.save(orderToUpdate);
         }
         return null;
     }
