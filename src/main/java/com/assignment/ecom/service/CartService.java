@@ -53,10 +53,8 @@ public class CartService {
         return cartResponseList;
     }
 
-    /* 
-     * Internal method - used by OrderService 
-     * Returns raw cart items without product details 
-     */
+    // Internal method - used by OrderService
+    // Returns raw cart items without product details
     public List<CartItem> getCartItemsByUserId(String userId) {
         return cartRepository.findByUserId(userId);
     }
