@@ -23,7 +23,7 @@ A simple e-commerce backend system built with Spring Boot and MongoDB. This proj
 
 ## 🛠 Tech Stack
 - **Framework**: Spring Boot 4.0.1
-- **Language**: Java 21
+- **Language**: Java 17+
 - **Database**: MongoDB (NoSQL)
 - **Build Tool**: Maven
 - **Dependencies**:
@@ -36,9 +36,9 @@ A simple e-commerce backend system built with Spring Boot and MongoDB. This proj
 
 Before you begin, ensure you have the following installed:
 
-- **Java Development Kit (JDK) 21** or higher
+- **Java Development Kit (JDK) 17** or higher
   - Check version: `java -version`
-  - Download: [OpenJDK](https://jdk.java.net/21/) or [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)
+  - Download: [OpenJDK](https://jdk.java.net/17/) or [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)
 
 - **MongoDB** (Community Edition recommended)
   - Should be running on `localhost:27017` (default port)
@@ -349,9 +349,9 @@ src/
 
 ### Build Fails with Java Version Error
 
-**Problem**: `java: invalid source release: 21`
+**Problem**: `java: invalid source release: 17`
 
-**Solution**: Ensure you're using Java 21+
+**Solution**: Ensure you're using Java 17+
 ```bash
 java -version
 # Update JAVA_HOME environment variable if needed
