@@ -12,18 +12,23 @@ import java.util.HashMap;
 public class PaymentWebhookController {
     private final PaymentService paymentService;
 
+    /**
+     * Payment gateway calls this endpoint when payment is processed
+     * In real life this would need authentication/signature verification
+     */
     @PostMapping("/payment")
     public Map<String, String> handlePaymentWebhook(@RequestBody Map<String, Object> payload) {
         String orderId = (String) payload.get("orderId");
         String status = (String) payload.get("status");
         String paymentId = (String) payload.get("paymentId");
 
+        // basic validation - should probably be more robust
         if (orderId != null && status != null) {
             paymentService.processWebhook(orderId, status, paymentId);
         }
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Webhook processed successfully");
-        return response;
+        Map<String, String> webhookResponse = new HashMap<>();
+        webhookResponse.put("message", "Webhook processed successfully");
+        return webhookResponse;
     }
 }

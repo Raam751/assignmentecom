@@ -14,11 +14,13 @@ public class ProductController {
 
     @PostMapping
     public Product createProduct(@RequestBody Product product) {
+        // add new product to catalog
         return productService.createProduct(product);
     }
 
     @GetMapping
     public List<Product> getAllProducts() {
+        // returns all products in the system
         return productService.getAllProducts();
     }
 

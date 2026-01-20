@@ -14,6 +14,7 @@ public class PaymentController {
 
     @PostMapping("/create")
     public Payment createPayment(@RequestBody PaymentRequest request) {
+        // kicks off payment process - webhook will update status later
         return paymentService.createPayment(request);
     }
 
